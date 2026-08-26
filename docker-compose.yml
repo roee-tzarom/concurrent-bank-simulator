@@ -1,0 +1,10 @@
+services:
+  bank:
+    build: .
+    volumes:
+      - ./accounts.txt:/app/accounts.txt
+      - ./logs:/app/logs
+    environment:
+      - N_BRANCHES=3
+      - M_THREADS=5
+      - N_TX=20

@@ -1,0 +1,12 @@
+# Compiled output
+/bank
+*.o
+
+# Runtime logs
+/logs/*.log
+
+# Local editor settings
+.vscode/
+
+# Course submissions and private documents
+*.pdf
