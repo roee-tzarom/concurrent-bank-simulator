@@ -36,3 +36,20 @@ docker compose up --build
 ```
 
 The Compose file sets `N_BRANCHES=3`, `M_THREADS=5` and `N_TX=20`, and mounts the sample accounts and log directory. This is a concurrency exercise with fictional data, not a persistent banking service.
+
+
+## Why this design is interesting
+
+The same balance can be observed by threads in more than one branch process. Ordinary heap memory and an ordinary thread mutex would not be enough for that process boundary, so the program places account state in shared `mmap` memory and initializes synchronization objects for cross-process use. A branch-level semaphore limits concurrency. Parent/child pipes carry branch completion information back to the process that started the simulation.
+
+The locking path protects account changes while allowing the program to demonstrate what goes wrong when protection is disabled. `race_mutex.png` and `race_no_lock.png` document the contrasting runs included in the repository. Results depend on scheduling, so a single run is not proof that a race cannot occur.
+
+## Trace a transaction
+
+1. `accounts.txt` seeds fictional account IDs and balances.
+2. The parent allocates shared state and forks the configured number of branches.
+3. Each branch launches workers that perform transfers and balance inquiries.
+4. Workers update protected state, log transactions and report branch results.
+5. The parent collects child results and releases shared resources.
+
+`bank.c` contains the simulation and synchronization logic; the `Makefile` is the direct build path. The `Dockerfile` and `docker-compose.yml` supply a repeatable Linux environment and mount the example input and log directory. Environment values such as `N_BRANCHES`, `M_THREADS` and `N_TX` change the workload. This code is intended for studying inter-process coordination, not financial correctness, durable transactions or customer data.
