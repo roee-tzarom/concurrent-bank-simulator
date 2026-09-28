@@ -1,62 +1,38 @@
 # Concurrent Bank Simulator
 
-A Linux/POSIX C project that simulates concurrent banking operations across
-multiple branches. It demonstrates how synchronization primitives protect
-shared account balances when processes and threads run at the same time.
+A POSIX C simulation of account operations across multiple bank branches. It combines processes, threads and shared memory to make race conditions and synchronization strategies observable.
 
-## Highlights
+## Architecture
 
-- Multi-process architecture using `fork()` and pipes.
-- Concurrent transaction handling with POSIX threads.
-- Shared account state implemented with `mmap()`.
-- Per-account mutexes for safe balance updates.
-- Semaphore-based throttling of active branches.
-- A readers-writers synchronization mechanism for balance inquiries.
-- Docker and Docker Compose support for a reproducible environment.
+1. The parent loads fictional balances from `accounts.txt` into `mmap` shared memory and creates branch processes with `fork()`.
+2. Branches start transaction and balance-inquiry threads.
+3. Per-account synchronization protects writes and supports concurrent readers. A process-shared semaphore limits active branches.
+4. Pipes return branch results to the parent; transactions are appended to `logs/transactions.log`.
 
-## Race Condition Demonstration
+The implementation also handles child-process signals and cleans up synchronization objects. The `NO_LOCK` compile flag provides a deliberate race-condition demonstration.
 
-The project can be built with or without locking to show why synchronization
-is essential when multiple workers update the same account.
+## Run
 
-### Without locks
+Requires Linux, WSL or another POSIX environment with threads, semaphores and `mmap`.
 
 ```bash
-gcc -Wall -Wextra -pthread -DNO_LOCK bank.c -o bank
+mkdir -p logs
+make
 ./bank
 ```
 
-![Run without locks](race_no_lock.png)
-
-### With mutex protection
+Compare behavior without transaction locking:
 
 ```bash
-gcc -Wall -Wextra -pthread bank.c -o bank
-./bank
+gcc -Wall -Wextra -pthread -DNO_LOCK bank.c -o bank-no-lock
+./bank-no-lock
 ```
 
-![Run with mutex protection](race_mutex.png)
-
-## Run with Docker
+Or run the supplied container configuration:
 
 ```bash
-docker compose build
-docker compose up
+mkdir -p logs
+docker compose up --build
 ```
 
-Transaction output is written to `logs/transactions.log`.
-
-## Project Structure
-
-```text
-bank.c                Core concurrent banking simulation
-accounts.txt          Sample account data
-Makefile              Local build commands
-Dockerfile            Container build definition
-docker-compose.yml    Reproducible runtime configuration
-race_*.png            Race-condition demonstration screenshots
-```
-
-## Notes
-
-The account data is fictional and included only for demonstration purposes.
+The Compose file sets `N_BRANCHES=3`, `M_THREADS=5` and `N_TX=20`, and mounts the sample accounts and log directory. This is a concurrency exercise with fictional data, not a persistent banking service.
